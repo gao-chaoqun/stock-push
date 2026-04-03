@@ -12,7 +12,6 @@ jobs:
       - name: Get Stock Data & Analyze
         id: stock
         run: |
-          # 获取股票数据
           STOCK_DATA=$(curl -s "https://push2.eastmoney.com/api/qt/stock/get?secid=0.002617&fields=f43,f44,f45,f46,f47,f48,f57,f58,f169,f170,f171,f116,f117,f118")
           
           PRICE=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d['data']['f43']/100,2))" 2>/dev/null || echo "")
@@ -52,25 +51,25 @@ jobs:
           
           if [ "$IS_AUCTION" = "true" ]; then
             if (( $(echo "$AUCTION_PCT > 5" | bc -l) )); then
-              AUCTION_SIGNAL="大幅高开 ⚠️ 警惕"
+              AUCTION_SIGNAL="大幅高开"
               AUCTION_DESC="竞价涨幅过大，小心高开低走"
             elif (( $(echo "$AUCTION_PCT > 2" | bc -l) )); then
-              AUCTION_SIGNAL="高开 🔥 关注"
+              AUCTION_SIGNAL="高开"
               AUCTION_DESC="竞价积极，注意开盘后承接力度"
             elif (( $(echo "$AUCTION_PCT > 0.5" | bc -l) )); then
-              AUCTION_SIGNAL="小幅高开 ✅"
+              AUCTION_SIGNAL="小幅高开"
               AUCTION_DESC="竞价温和偏强，可关注"
             elif (( $(echo "$AUCTION_PCT > -0.5" | bc -l) )); then
-              AUCTION_SIGNAL="平开 📊"
+              AUCTION_SIGNAL="平开"
               AUCTION_DESC="多空平衡，等待开盘后方向"
             elif (( $(echo "$AUCTION_PCT > -2" | bc -l) )); then
-              AUCTION_SIGNAL="小幅低开 ⚠️"
+              AUCTION_SIGNAL="小幅低开"
               AUCTION_DESC="竞价偏弱，关注是否有护盘"
             elif (( $(echo "$AUCTION_PCT > -5" | bc -l) )); then
-              AUCTION_SIGNAL="低开 🔥 注意"
+              AUCTION_SIGNAL="低开"
               AUCTION_DESC="竞价跌幅较大，小心低开低走"
             else
-              AUCTION_SIGNAL="大幅低开 ⚠️⚠️"
+              AUCTION_SIGNAL="大幅低开"
               AUCTION_DESC="竞价跌幅过大，警惕进一步下跌"
             fi
           fi
@@ -86,16 +85,16 @@ jobs:
           fi
           
           if (( $(echo "$VOL_RATIO > 1.5" | bc -l) )) && (( $(echo "$CHANGE_PCT > 2" | bc -l) )); then
-            VOL_PRICE_SIGNAL="放量上涨 🔥"
+            VOL_PRICE_SIGNAL="放量上涨"
             VOL_PRICE_DESC="量价齐升，强势信号"
           elif (( $(echo "$VOL_RATIO > 1.5" | bc -l) )) && (( $(echo "$CHANGE_PCT < -2" | bc -l) )); then
-            VOL_PRICE_SIGNAL="放量下跌 ⚠️"
+            VOL_PRICE_SIGNAL="放量下跌"
             VOL_PRICE_DESC="量价齐跌，警惕信号"
           elif (( $(echo "$VOL_RATIO < 0.5" | bc -l) )) && (( $(echo "$CHANGE_PCT > 0" | bc -l) )); then
-            VOL_PRICE_SIGNAL="缩量上涨 ⚠️"
+            VOL_PRICE_SIGNAL="缩量上涨"
             VOL_PRICE_DESC="涨势无量，需谨慎"
           elif (( $(echo "$VOL_RATIO < 0.5" | bc -l) )) && (( $(echo "$CHANGE_PCT < 0" | bc -l) )); then
-            VOL_PRICE_SIGNAL="缩量下跌 ✅"
+            VOL_PRICE_SIGNAL="缩量下跌"
             VOL_PRICE_DESC="卖压不重，可能见底"
           else
             VOL_PRICE_SIGNAL="震荡整理"
@@ -103,75 +102,74 @@ jobs:
           fi
           
           if (( $(echo "$PRICE >= $RESIST_3" | bc -l) )); then
-            ZONE="📈 高位区(>$RESIST_3)"
+            ZONE="高位区"
           elif (( $(echo "$PRICE >= $RESIST_2" | bc -l) )); then
-            ZONE="📈 偏高区($RESIST_2-$RESIST_3)"
+            ZONE="偏高区"
           elif (( $(echo "$PRICE >= $RESIST_1" | bc -l) )); then
-            ZONE="📊 中上区($RESIST_1-$RESIST_2)"
+            ZONE="中上区"
           elif (( $(echo "$PRICE >= $SUPPORT_2" | bc -l) )); then
-            ZONE="📊 中下区($SUPPORT_2-$RESIST_1)"
+            ZONE="中下区"
           elif (( $(echo "$PRICE >= $SUPPORT_1" | bc -l) )); then
-            ZONE="📉 偏低区($SUPPORT_1-$SUPPORT_2)"
+            ZONE="偏低区"
           else
-            ZONE="📉 低位区(<$SUPPORT_1)"
+            ZONE="低位区"
           fi
           
-          # 操作建议
           if [ "$IS_AUCTION" = "true" ]; then
             if (( $(echo "$AUCTION_PCT > 5" | bc -l) )); then
-              SUGGESTION="⚠️ 不建议追高"
+              SUGGESTION="不建议追高"
               REASON="竞价大幅高开，短险风险大"
               ADD_PRICE="等待回落至$RESIST_1元以下再考虑"
               STOP_LOSS="跌破$OPEN元考虑止损"
             elif (( $(echo "$AUCTION_PCT > 2" | bc -l) )); then
-              SUGGESTION="🔔 谨慎观察"
+              SUGGESTION="谨慎观察"
               REASON="竞价高开，需看开盘后走势"
               ADD_PRICE="若回踩不破$YCLOSE元企稳，可轻仓试探"
               STOP_LOSS="跌破$YCLOSE元减仓，跌破$SUPPORT_2元止损"
             elif (( $(echo "$AUCTION_PCT > 0" | bc -l) )); then
-              SUGGESTION="✅ 可少量关注"
+              SUGGESTION="可少量关注"
               REASON="竞价温和高开，偏积极信号"
               ADD_PRICE="突破$RESIST_1元可加仓"
               STOP_LOSS="跌破$YCLOSE元谨慎，跌破$SUPPORT_2元止损"
             elif (( $(echo "$AUCTION_PCT > -2" | bc -l) )); then
-              SUGGESTION="⏸️ 观望为主"
+              SUGGESTION="观望为主"
               REASON="竞价小幅低开，等待盘中方向"
               ADD_PRICE="若反弹突破$YCLOSE元再考虑"
               STOP_LOSS="跌破$SUPPORT_1元考虑减仓"
             else
-              SUGGESTION="⚠️ 谨慎观望"
+              SUGGESTION="谨慎观望"
               REASON="竞价低开，弱势明显"
               ADD_PRICE="若反弹至$YCLOSE元附近受阻，可减仓"
               STOP_LOSS="跌破$SUPPORT_1元考虑止损"
             fi
           else
             if (( $(echo "$CHANGE_PCT > 5" | bc -l) )); then
-              SUGGESTION="⚠️ 不建议追涨"
+              SUGGESTION="不建议追涨"
               REASON="涨幅过大，警惕获利盘砸盘"
               ADD_PRICE="等待回调至$RESIST_1元以下再操作"
               STOP_LOSS="跌破$OPEN元考虑止盈"
             elif (( $(echo "$CHANGE_PCT > 3" | bc -l) )) && (( $(echo "$PRICE < $RESIST_2" | bc -l) )); then
-              SUGGESTION="🔥 突破可加仓"
+              SUGGESTION="突破可加仓"
               REASON="涨幅较大，处于相对低位区域"
               ADD_PRICE="突破$RESIST_1元可加仓，$RESIST_2元为强压力"
               STOP_LOSS="跌破$YCLOSE元减仓，跌破$SUPPORT_2元止损"
             elif (( $(echo "$CHANGE_PCT > 0" | bc -l) )) && (( $(echo "$PRICE < $SUPPORT_2" | bc -l) )); then
-              SUGGESTION="🟢 低位可关注"
+              SUGGESTION="低位可关注"
               REASON="当前价接近支撑区域"
               ADD_PRICE="在$SUPPORT_1-$PRICE区间可少量试探"
               STOP_LOSS="跌破$SUPPORT_1元止损"
             elif (( $(echo "$CHANGE_PCT < -5" | bc -l) )); then
-              SUGGESTION="⚠️⚠️ 关注止损"
+              SUGGESTION="关注止损"
               REASON="跌幅过大，警惕加速下跌"
               ADD_PRICE="不建议抄底，等待企稳"
               STOP_LOSS="跌破$PSYCH_1元考虑减仓"
             elif (( $(echo "$CHANGE_PCT < -3" | bc -l) )); then
-              SUGGESTION="⚠️ 谨慎观望"
+              SUGGESTION="谨慎观望"
               REASON="跌幅较大，关注支撑位"
               ADD_PRICE="若企稳在$SUPPORT_1元以上可少量补仓"
               STOP_LOSS="跌破$SUPPORT_1元减仓"
             else
-              SUGGESTION="⏸️ 持有观望"
+              SUGGESTION="持有观望"
               REASON="震荡整理，多空力量均衡"
               ADD_PRICE="等待突破：突破$RESIST_1元加仓，跌破$SUPPORT_2元减仓"
               STOP_LOSS="动态调整"
@@ -180,54 +178,60 @@ jobs:
           
           DATE_INFO=$(date '+%Y年%m月%d日 %H:%M')
           
+          printf "MSG=" > $GITHUB_OUTPUT
           if [ "$IS_AUCTION" = "true" ]; then
-            MSG="📈 **$NAME(002617) - 竞价分析**"
-            MSG="${MSG}\n📅 ${DATE_INFO} [集合竞价阶段]"
-            MSG="${MSG}\n\n📊 **竞价数据**"
-            MSG="${MSG}\n├ 昨收价：${YCLOSE}元"
-            MSG="${MSG}\n├ 竞价价：${OPEN}元"
-            MSG="${MSG}\n├ 竞价涨幅：${AUCTION_PCT}%"
-            MSG="${MSG}\n└ ⚠️ 成交量极少，为集合竞价数据"
-            MSG="${MSG}\n\n🔔 **竞价信号**：${AUCTION_SIGNAL}"
-            MSG="${MSG}\n   ${AUCTION_DESC}"
+            printf "📈 %s(002617) - 竞价分析\n\n" "$NAME" >> $GITHUB_OUTPUT
+            printf "📅 %s [集合竞价阶段]\n\n" "$DATE_INFO" >> $GITHUB_OUTPUT
+            printf "📊 竞价数据\n" >> $GITHUB_OUTPUT
+            printf "├ 昨收价：%s元\n" "$YCLOSE" >> $GITHUB_OUTPUT
+            printf "├ 竞价价：%s元\n" "$OPEN" >> $GITHUB_OUTPUT
+            printf "├ 竞价涨幅：%s%%\n" "$AUCTION_PCT" >> $GITHUB_OUTPUT
+            printf "└ ⚠️ 成交量极少，为集合竞价数据\n\n" >> $GITHUB_OUTPUT
+            printf "🔔 竞价信号：%s\n" "$AUCTION_SIGNAL" >> $GITHUB_OUTPUT
+            printf "   %s\n\n" "$AUCTION_DESC" >> $GITHUB_OUTPUT
           else
-            MSG="📈 **$NAME(002617) - 盘面分析**"
-            MSG="${MSG}\n📅 ${DATE_INFO} [盘中数据]"
-            MSG="${MSG}\n\n📊 **行情数据**"
-            MSG="${MSG}\n├ 昨收：${YCLOSE}元"
-            MSG="${MSG}\n├ 当前价：${PRICE}元"
-            MSG="${MSG}\n├ 涨跌幅：${CHANGE_PCT}% (${CHANGE_AMT}元)"
-            MSG="${MSG}\n├ 开盘：${OPEN}元 | 最高：${HIGH}元 | 最低：${LOW}元"
-            MSG="${MSG}\n└ 成交量：${VOL_WAN}万手 (量比约${VOL_RATIO}x)"
-            MSG="${MSG}\n\n📉 **量价信号**：${VOL_PRICE_SIGNAL}"
-            MSG="${MSG}\n   ${VOL_PRICE_DESC}"
+            printf "📈 %s(002617) - 盘面分析\n\n" "$NAME" >> $GITHUB_OUTPUT
+            printf "📅 %s [盘中数据]\n\n" "$DATE_INFO" >> $GITHUB_OUTPUT
+            printf "📊 行情数据\n" >> $GITHUB_OUTPUT
+            printf "├ 昨收：%s元\n" "$YCLOSE" >> $GITHUB_OUTPUT
+            printf "├ 当前价：%s元\n" "$PRICE" >> $GITHUB_OUTPUT
+            printf "├ 涨跌幅：%s%% (%s元)\n" "$CHANGE_PCT" "$CHANGE_AMT" >> $GITHUB_OUTPUT
+            printf "├ 开盘：%s元 | 最高：%s元 | 最低：%s元\n" "$OPEN" "$HIGH" "$LOW" >> $GITHUB_OUTPUT
+            printf "└ 成交量：%s万手 (量比约%sx)\n\n" "$VOL_WAN" "$VOL_RATIO" >> $GITHUB_OUTPUT
+            printf "📉 量价信号：%s\n" "$VOL_PRICE_SIGNAL" >> $GITHUB_OUTPUT
+            printf "   %s\n\n" "$VOL_PRICE_DESC" >> $GITHUB_OUTPUT
           fi
           
-          MSG="${MSG}\n\n🎯 **价格位置**：${ZONE}"
-          MSG="${MSG}\n├ 压力位：${RESIST_1}元 → ${RESIST_2}元 → ${RESIST_3}元"
-          MSG="${MSG}\n└ 支撑位：${SUPPORT_2}元 → ${SUPPORT_1}元 → ${PSYCH_1}元 → ${PSYCH_2}元"
+          printf "🎯 价格位置：%s\n" "$ZONE" >> $GITHUB_OUTPUT
+          printf "├ 压力位：%s元 → %s元 → %s元\n" "$RESIST_1" "$RESIST_2" "$RESIST_3" >> $GITHUB_OUTPUT
+          printf "└ 支撑位：%s元 → %s元 → %s元 → %s元\n\n" "$SUPPORT_2" "$SUPPORT_1" "$PSYCH_1" "$PSYCH_2" >> $GITHUB_OUTPUT
           
-          MSG="${MSG}\n\n💡 **操作建议**"
-          MSG="${MSG}\n├ **建议**：${SUGGESTION}"
-          MSG="${MSG}\n├ **理由**：${REASON}"
-          MSG="${MSG}\n├ **参考操作价位**：${ADD_PRICE}"
-          MSG="${MSG}\n└ **止损参考**：${STOP_LOSS}"
+          printf "💡 操作建议\n" >> $GITHUB_OUTPUT
+          printf "├ 建议：%s\n" "$SUGGESTION" >> $GITHUB_OUTPUT
+          printf "├ 理由：%s\n" "$REASON" >> $GITHUB_OUTPUT
+          printf "├ 参考操作价位：%s\n" "$ADD_PRICE" >> $GITHUB_OUTPUT
+          printf "└ 止损参考：%s\n\n" "$STOP_LOSS" >> $GITHUB_OUTPUT
           
-          MSG="${MSG}\n\n⚠️ *本分析仅供参考，不构成投资建议*"
+          printf "⚠️ 本分析仅供参考，不构成投资建议" >> $GITHUB_OUTPUT
           
-          echo "MSG=${MSG}" >> $GITHUB_OUTPUT
-          echo "PRICE=${PRICE}" >> $GITHUB_OUTPUT
-          echo "CHANGEPCT=${CHANGE_PCT}" >> $GITHUB_OUTPUT
-          echo "IS_AUCTION=${IS_AUCTION}" >> $GITHUB_OUTPUT
-          echo "AUCTION_SIGNAL=${AUCTION_SIGNAL}" >> $GITHUB_OUTPUT
+          printf "PRICE=%s\n" "$PRICE" >> $GITHUB_OUTPUT
+          printf "CHANGEPCT=%s\n" "$CHANGE_PCT" >> $GITHUB_OUTPUT
+          printf "IS_AUCTION=%s\n" "$IS_AUCTION" >> $GITHUB_OUTPUT
+          printf "AUCTION_SIGNAL=%s\n" "$AUCTION_SIGNAL" >> $GITHUB_OUTPUT
 
       - name: Send WeChat Push
+        env:
+          MSG: ${{ steps.stock.outputs.MSG }}
+          PRICE: ${{ steps.stock.outputs.PRICE }}
+          CHANGEPCT: ${{ steps.stock.outputs.CHANGEPCT }}
+          IS_AUCTION: ${{ steps.stock.outputs.IS_AUCTION }}
+          AUCTION_SIGNAL: ${{ steps.stock.outputs.AUCTION_SIGNAL }}
         run: |
-          if [ "${{ steps.stock.outputs.IS_AUCTION }}" = "true" ]; then
-            TITLE="📊 ${{ steps.stock.outputs.PRICE }}元 竞价 ${{ steps.stock.outputs.AUCTION_SIGNAL }}"
+          if [ "$IS_AUCTION" = "true" ]; then
+            TITLE="📊 $PRICE元 竞价 $AUCTION_SIGNAL"
           else
-            TITLE="📊 ${{ steps.stock.outputs.PRICE }}元 (${{ steps.stock.outputs.CHANGEPCT }}%)"
+            TITLE="📊 $PRICE元 ($CHANGEPCT%)"
           fi
           curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" \
             -d "title=${TITLE}" \
-            -d "desp=${{ steps.stock.outputs.MSG }}"
+            -d "desp=${MSG}"
