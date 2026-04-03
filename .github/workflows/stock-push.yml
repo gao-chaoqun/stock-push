@@ -12,10 +12,8 @@ jobs:
       - name: Get Stock Data & Analyze
         id: stock
         run: |
-          # 获取露笑科技(002617)实时数据
           STOCK_DATA=$(curl -s "https://push2.eastmoney.com/api/qt/stock/get?secid=0.002617&fields=f43,f44,f45,f46,f47,f48,f57,f58,f169,f170,f171")
           
-          # 解析基础数据
           PRICE=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d['data']['f43']/100,2) if d.get('data') else 0)")
           CHANGEPCT=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d['data']['f170']/100,2) if d.get('data') else 0)")
           OPEN=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d['data']['f46']/100,2) if d.get('data') else 0)")
@@ -23,7 +21,6 @@ jobs:
           LOW=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(round(d['data']['f45']/100,2) if d.get('data') else 0)")
           NAME=$(echo $STOCK_DATA | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['f58'] if d.get('data') else 'Unknown')")
           
-          # 动态计算支撑位和压力位
           SUPPORT1=$(python3 -c "print(round($PRICE * 0.95, 2))")
           SUPPORT2=$(python3 -c "print(round($PRICE * 0.90, 2))")
           RESISTANCE=$(python3 -c "print(round($PRICE * 1.05, 2))")
@@ -38,7 +35,6 @@ jobs:
           echo "SUPPORT2=$SUPPORT2" >> $GITHUB_OUTPUT
           echo "RESISTANCE=$RESISTANCE" >> $GITHUB_OUTPUT
           
-          # 生成分析建议
           if (( $(echo "$CHANGEPCT > 2" | bc -l) )); then
             echo "SUGGESTION=可以考虑适量加仓" >> $GITHUB_OUTPUT
             echo "REASON=放量上涨" >> $GITHUB_OUTPUT
@@ -64,10 +60,22 @@ jobs:
           SUGGESTION: ${{ steps.stock.outputs.SUGGESTION }}
           REASON: ${{ steps.stock.outputs.REASON }}
         run: |
-          # 构建消息内容（用简单格式避免YAML问题）
-          MSG="今日行情：当前价${PRICE}元，涨跌幅${CHANGEPCT}%。操作建议：${SUGGESTION}，原因：${REASON}。关键位置：第一支撑${SUPPORT1}元，强支撑${SUPPORT2}元，压力位${RESISTANCE}元。"
+          MSG="**今日行情**
+当前价：$PRICE元
+涨跌幅：$CHANGEPCT%
+今开：$OPEN元 | 最高：$HIGH元 | 最低：$LOW元
+
+**操作建议**
+$SUGGESTION
+原因：$REASON
+
+**关键位置**（根据当前价动态计算）
+第一支撑：$SUPPORT1元
+强支撑：$SUPPORT2元
+压力位：$RESISTANCE元
+
+⚠️ 仅供参考，不构成投资建议"
           
           curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" \
-            -d "title=📊 ${NAME}(002617)每日分析 - $(date '+%m/%d %H:%M')" \
-            -d "desp=${MSG}"
-
+            -d "title=📊 $NAME(002617)每日分析 - $(date '+%m/%d %H:%M')" \
+            -d "desp=$MSG"
