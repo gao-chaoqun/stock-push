@@ -37,3 +37,4 @@ jobs:
       - name: Send WeChat Push
         run: |
           curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" -d "title=${{ steps.stock.outputs.TITLE }}" -d "desp=${{ steps.stock.outputs.MSG }}"
+          
