@@ -1,0 +1,16 @@
+name: Stock Daily Push
+
+on:
+  schedule:
+    - cron: '25 1 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send WeChat Push
+        run: |
+          curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" \
+            -d "title=📊 露笑科技每日分析" \
+            -d "desp=⏰ 早上好！今日分析已生成，请查看WorkBuddy获取详细报告。"
