@@ -9,7 +9,7 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
-      - name: Get Stock Data & Analyze
+      - name: Get Stock Data & Prepare Message
         id: stock
         run: |
           STOCK_DATA=$(curl -s "https://push2.eastmoney.com/api/qt/stock/get?secid=0.002617&fields=f43,f44,f45,f46,f47,f48,f57,f58,f169,f170,f171")
@@ -25,40 +25,25 @@ jobs:
           SUPPORT2=$(python3 -c "print(round($PRICE * 0.90, 2))")
           RESISTANCE=$(python3 -c "print(round($PRICE * 1.05, 2))")
           
-          echo "PRICE=$PRICE" >> $GITHUB_OUTPUT
-          echo "CHANGEPCT=$CHANGEPCT" >> $GITHUB_OUTPUT
-          echo "OPEN=$OPEN" >> $GITHUB_OUTPUT
-          echo "HIGH=$HIGH" >> $GITHUB_OUTPUT
-          echo "LOW=$LOW" >> $GITHUB_OUTPUT
-          echo "NAME=$NAME" >> $GITHUB_OUTPUT
-          echo "SUPPORT1=$SUPPORT1" >> $GITHUB_OUTPUT
-          echo "SUPPORT2=$SUPPORT2" >> $GITHUB_OUTPUT
-          echo "RESISTANCE=$RESISTANCE" >> $GITHUB_OUTPUT
-          
           if (( $(echo "$CHANGEPCT > 2" | bc -l) )); then
-            echo "SUGGESTION=可以考虑适量加仓" >> $GITHUB_OUTPUT
-            echo "REASON=放量上涨" >> $GITHUB_OUTPUT
+            SUGGESTION="可以考虑适量加仓"
+            REASON="放量上涨"
           elif (( $(echo "$CHANGEPCT < -2" | bc -l) )); then
-            echo "SUGGESTION=建议观望或减仓" >> $GITHUB_OUTPUT
-            echo "REASON=放量下跌，注意风险" >> $GITHUB_OUTPUT
+            SUGGESTION="建议观望或减仓"
+            REASON="放量下跌，注意风险"
           else
-            echo "SUGGESTION=谨慎观望" >> $GITHUB_OUTPUT
-            echo "REASON=等待更明确信号" >> $GITHUB_OUTPUT
+            SUGGESTION="谨慎观望"
+            REASON="等待更明确信号"
           fi
+          
+          TITLE="📊 ${NAME}(002617)每日分析 - $(date '+%m/%d %H:%M')"
+          MSG="今日行情：当前价${PRICE}元，涨跌幅${CHANGEPCT}%。操作建议：${SUGGESTION}，原因：${REASON}。关键位置：第一支撑${SUPPORT1}元，强支撑${SUPPORT2}元，压力位${RESISTANCE}元。"
+          
+          echo "TITLE=$TITLE" >> $GITHUB_OUTPUT
+          echo "MSG=$MSG" >> $GITHUB_OUTPUT
 
       - name: Send WeChat Push
-        env:
-          PRICE: ${{ steps.stock.outputs.PRICE }}
-          CHANGEPCT: ${{ steps.stock.outputs.CHANGEPCT }}
-          OPEN: ${{ steps.stock.outputs.OPEN }}
-          HIGH: ${{ steps.stock.outputs.HIGH }}
-          LOW: ${{ steps.stock.outputs.LOW }}
-          NAME: ${{ steps.stock.outputs.NAME }}
-          SUPPORT1: ${{ steps.stock.outputs.SUPPORT1 }}
-          SUPPORT2: ${{ steps.stock.outputs.SUPPORT2 }}
-          RESISTANCE: ${{ steps.stock.outputs.RESISTANCE }}
-          SUGGESTION: ${{ steps.stock.outputs.SUGGESTION }}
-          REASON: ${{ steps.stock.outputs.REASON }}
         run: |
-          MSG="今日行情：当前价${PRICE}元，涨跌幅${CHANGEPCT}%。操作建议：${SUGGESTION}，原因：${REASON}。关键位置：第一支撑${SUPPORT1}元，强支撑${SUPPORT2}元，压力位${RESISTANCE}元。"
-          curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" -d "title=📊 ${NAME}(002617)每日分析 - $(date '+%m/%d %H:%M')" -d "desp=${MSG}"
+          curl -X POST "https://sctapi.ftqq.com/SCT333369TDkou0QECM7WdHU4UOcLoELoW.send" \
+            -d "title=${{ steps.stock.outputs.TITLE }}" \
+            -d "desp=${{ steps.stock.outputs.MSG }}"
